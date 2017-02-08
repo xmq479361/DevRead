@@ -6,6 +6,7 @@ git init demo
 # 设置常量 (alias:命令关键字别名)
 git config --global alias.ci commit 
 
+
 ###################################################
 # 查看文件状态 (-s 精简状态显示 , -b 显示当前分支名称)
 git status -s -b
@@ -17,6 +18,7 @@ git cat-file -p <commit_id>
 
 # 查看当前的工作分支
 git branch
+
 
 
 ###################################################
