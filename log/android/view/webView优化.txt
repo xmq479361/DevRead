@@ -1,0 +1,103 @@
+http://bugly.qq.com/bbs/forum.php?mod=viewthread&tid=516
+Android中导致内存泄漏的竟然是它----Dialog
+
+1. CookieSyncManager是个全局静态单例，操作系统内部使用了App的Activity作为Context构造了它的实例。
+我们应该在App启动的时候，抢先帮系统创建这个单例，而且要用applicationContext，让它不会引用到Activity。
+
+2. 使用WebView的页面（Activity），在生命周期结束页面退出（onDestory）的时候，
+需要主动调用WebView.onPause()以及WebView.destory()以便让系统释放WebView相关资源。
+
+3. IClipboardDataPasteEventImpl是三星手机才有的类，这个东西还会让EditText也发生内存泄漏！
+
+4. WebView内存泄漏是众所周知的，建议另外启动一个进程专门运行WebView。不要9998，不要9999，我们要100%！WebView用完之后就把进程杀死，即使泄漏了也无碍。
+
+========	http://www.2cto.com/kf/201503/385753.html
+Android WebView优化
+多进程android:process="packagename.web"
+ ll = new LinearLayout(getApplicationContext()); 
+ll.setOrientation(LinearLayout.VERTICAL);
+wv = new WebView(getApplicationContext());
+
+  @Override
+protected void onDestroy() {
+    ll.removeAllViews();
+    wv.stopLoading();
+    wv.removeAllViews();
+    wv.destroy();
+    wv = null;
+    ll = null;
+    super.onDestroy();
+}
+   @Override
+protected void onSaveInstanceState(Bundle outState) {
+    super.onSaveInstanceState(outState);
+    wv.saveState(outState);
+    Log.e(TAG, "save state...");
+}
+
+   @Override
+protected void onCreate(bundle savedInstanceState){
+	if(null!=savedInstanceState){
+		wv.restoreState(savedInstanceState);
+		Log.i(TAG, "restore state");
+	}else{
+		wv.loadUrl("http://3g.cn");
+	}
+}
+================http://www.kuqin.com/shuoit/20151221/349550.html
+1     public void releaseAllWebViewCallback() {  
+2         
+if (android.os.Build.VERSION.SDK_INT < 16) {  3            
+ try {  4                 Field field = WebView.class.getDeclaredField("mWebViewCore");  
+ 5                 
+ field = field.getType().getDeclaredField("mBrowserFrame");  
+ 6                 field = field.getType().getDeclaredField("sConfigCallback");  
+ 7                 field.setAccessible(true);  
+ 8                 field.set(null, null);  
+ 9             } catch (NoSuchFieldException e) { 
+ 10                 if (BuildConfig.DEBUG) { 
+ 11                     e.printStackTrace(); 
+ 12                 } 
+ 13             } catch (IllegalAccessException e) { 
+ 14                 if (BuildConfig.DEBUG) { 
+ 15                     e.printStackTrace(); 
+ 16                 } 
+ 17             } 
+ 18         } else { 19             try { 
+ 20                 Field sConfigCallback = Class.forName("android.webkit.BrowserFrame").getDeclaredField("sConfigCallback"); 
+ 21                 if (sConfigCallback != null) { 22                     sConfigCallback.setAccessible(true); 
+ 23                     sConfigCallback.set(null, null); 24                 } 25             } catch (NoSuchFieldException e) { 
+ 26                 if (BuildConfig.DEBUG) { 27                     e.printStackTrace(); 28                 } 
+ 29             } catch (ClassNotFoundException e) { 30                 if (BuildConfig.DEBUG) { 
+ 31                     e.printStackTrace(); 32                 } 33             } catch (IllegalAccessException e) { 
+ 34                 
+if (BuildConfig.DEBUG) { 35                     e.printStackTrace(); 36                 } 
+37             } 38         } 39     }
+
+
+
+https://github.com/pedant/safe-java-js-webview-bridge
+js层调用函数及回调函数的包装 Safe Java-JS WebView Bridge 
+http://blog.csdn.net/l_serein/article/details/9007479
+ Android WebView Memory Leak WebView内存泄漏
+ 
+http://www.cocoachina.com/webapp/20151217/14718.html
+http://blog.csdn.net/cnzx219/article/details/46574073
+Android中WebView中拦截所有请求并替换URL （本地）
+http://blog.csdn.net/xyz_lmn/article/details/39473701
+
+------------------------------------------------------
+
+http://www.tuicool.com/articles/Jjeiuqf
+http://blog.csdn.net/u011159417/article/details/51017891
+ WebView控件替换方案
+
+http://www.open-open.com/news/view/8555fc
+SuperWebView：系统WebView的增强替代
+https://crosswalk-project.org/documentation/downloads.html
+crosswalk 替换方案
+http://x5.tencent.com/doc?id=1004
+腾讯浏览器内核
+
+
+http://blog.csdn.net/kpioneer123/article/details/51438204

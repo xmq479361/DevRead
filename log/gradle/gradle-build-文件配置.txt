@@ -1,0 +1,153 @@
+参考文章：
+http://www.open-open.com/lib/view/open1439216256770.html
+
+http://jiajixin.cn/2015/08/07/gradle-android/
+
+
+
+
+<h2>productFlavors</h2>
+这个东西基本上已经烂大街了，gradle的项目一般都会使用Product Flavor，看完美团的文章，你应该就懂了。
+
+美团Android自动化之旅—适配渠道包
+http://tech.meituan.com/mt-apk-adaptation.html
+
+
+<h2>buildTypes</h2>
+很多App有内测版和正式版，怎么让他们同时安装在一个手机上？同时安装在一个手机上，要求packageName不同的，
+用productFlavors可以解决，但可能不够优雅，alpha版本还要来个debug和release版本岂不是很蛋疼？
+可以用buildTypes来解决，淘宝资深架构师朱鸿的文章有比较详细的讲解，但有些内容可能有些过时了，需要更改脚本。
+
+
+<h2>依赖更新</h2>
+项目依赖的远程包如果有更新，会有提醒或者自动更新吗？ 不会的，需要你手动设置changing标记为true，这样gradle会每24小时检查更新，
+通过更改 resolutionStrategy 可以修改检查周期。
+
+configurations.all {
+    // check for updates every build
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+dependencies {
+    compile group: "group", name: "projectA", version: "1.1-SNAPSHOT", changing: true
+}
+
+之前上传aar同一版本到maven仓库，但依赖却没有更新，该怎么办呢?可以直接删除本地缓存，缓存在~/.gradle/caches目录下，
+删除缓存后，下次运行就会自动重新下载远程依赖了。
+
+
+<H2>上传aar到Maven仓库</H2>
+在工程的build.gradle中添加如下脚本：
+
+apply plugin: 'maven'
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            pom.groupId = GROUP_ID
+            pom.artifactId = ARTIFACT_ID
+            pom.version = VERSION
+            repository(url: RELEASE_REPOSITORY_URL) {
+                authentication(userName: USERNAME, password: PASSWORD)
+            }
+        }
+    }
+}
+
+在build.gradle同目录下添加gradle.properties文件，配置如下：
+
+GROUP_ID=dianping.android.nova.thirdparty
+ARTIFACT_ID=zxing
+VERSION=1.0
+RELEASE_REPOSITORY_URL=http://mvn.dp.com/nova
+USERNAME=hello
+PASSWORD=hello
+gradle.properties的属性会被build.gradle读取用来上传aar，最后执行./gradlew :Zxing:uploadArchives即可。
+
+更多配置，可参考建立企业内部maven服务器并使用Android Studio发布公共项目。
+http://blog.csdn.net/qinxiandiqi/article/details/44458707
+
+<H2>取消任务</H2>
+项目构建过程中那么多任务，有些test相关的任务可能根本不需要，可以直接关掉，在build.gradle中加入如下脚本：
+
+tasks.whenTaskAdded { task ->
+    if (task.name.contains('AndroidTest')) {
+        task.enabled = false
+    }
+}
+tasks会获取当前project中所有的task，enabled属性控制任务开关，whenTaskAdded后面的闭包会在gradle配置阶段完成。
+
+
+<H2>加入任务</H2>
+任务可以取消了，但还不尽兴啊，想加入任务怎么搞？前面讲了dependsOn的方法，那就拿过来用啊，但是原有任务的依赖关系你又不是很清楚，甚至任务名称都不知道，怎么搞？
+
+比如我想在执行dex打包之前，加入一个hello任务，可以这么写：
+
+afterEvaluate {
+    android.applicationVariants.each { variant ->
+        def dx = tasks.findByName("dex${variant.name.capitalize()}")
+        def hello = "hello${variant.name.capitalize()}"
+        task(hello) << {
+            println "hello"
+        }
+        tasks.findByName(hello).dependsOn dx.taskDependencies.getDependencies(dx)
+        dx.dependsOn tasks.findByName(hello)
+    }
+}
+afterEvaluate是什么鸟？你可以理解为在配置阶段要结束，项目评估完会走到这一步。
+
+variant呢？variant = productFlavors+ buildTypes，所以dex打包的任务可能就是dexCommonDebug。
+
+你怎么知道dex任务的具体名称？Android Studio中的Gradle Console在执行gradle任务的时候会有输出，可以仔细观察一下。
+
+hello任务定义的这么复杂干啥？我直接就叫hello不行吗?不行，each就是遍历variants，如果每个都叫hello，多个variant都一样，
+岂不是傻傻分不清楚，加上variant的name做后缀，才有任务的区分。
+
+关键来了，dx.taskDependencies.getDependencies(dx)会获取dx任务的所有依赖，让hello任务依赖dx任务的所有依赖，再让dx任务依赖hello任务，
+这样就可以加入某个任务到构建流程了，是不是感觉非常灵活。
+
+我突然想到，用doFirst的方式加入一个action到dx任务中，应该也可以达到上面效果。
+
+
+<H2>gradle加速</H2>
+gradle加速可以看看这位朋友写的加速Android Studio/Gradle构建，我就不多嘴了。并行编译，常驻内存，还有离线模式这些思路对gradle的加速感觉还是比较有限。
+
+想要更快，可以尝试下Facebook出品的Buck，可以看一下Vine团队适配Buck的技术文章，我们的架构师也有适配Buck，加速效果在10倍左右，但有两个缺点，
+不支持Windows系统，不支持远程依赖。
+
+
+
+<H2>获取AndroidManifest文件<、H2>
+ApplicationId versus PackageName提到，gradle中的applicationid用来区分应用，manifest中packageName用来指定R文件包名，并且各个productFlavor 的manifest中的packageName应该一致。applicationid只是gradle脚本中的定义，其实最后生成的apk中的manifest文件的packageName还是会被applicationid替换掉。
+
+那获取R文件的包名怎么搞？要获取AndroidManifest中package属性，并且这个manifest要是起始的文件，因为最终文件中的package属性会被applicationid冲掉，由于各个manifest中的package属性一样，并且非主manifest可以没有package属性，所以只有获取主manifest的package属性才是最准确的。
+
+def manifestFile = android.sourceSets.main.manifest.srcFile
+def packageName = new XmlParser().parse(manifestFile).attribute('package')
+
+
+<H2>无用资源</H2>
+无用的资源就不要打包进APK了。
+
+Resource Shrinking
+http://tools.android.com/tech-docs/new-build-system/resource-shrinking
+
+<H2>一个Bug</H2>
+之前在创业公司，用 Travis做持续继承，遇到一个让我很纠结的问题。在Travis上执行构建脚本如下：
+
+./gradlew clean
+./gradlew assembleXR
+最后生成的APK在运行的时候报错，提示找不到某个.so文件，解压发现APK中果然缺少某个库工程的.so文件，但在本地运行的时候却是没有问题，纠结了好久，后来研究发现Android Studio中执行Clean Project的时候，会执行generateSources的任务，把它加入构建脚本后才打包正确。最近发现，这原来是个Bug，并且已经在android gradle1.3被修复了。
+
+匆匆忙忙间，写了很多东西。读完此文，希望你能感受到构建神器的魅力，感受到它的灵活强大，当然也希望能让你使用Gradle更加得心应手。
+
+
+
+Android Studio中如何解决重复依赖导致的app:transformClassesWithJarMergingForDebug
+jar包冲突
+
+http://blog.csdn.net/cx1229/article/details/52786168
+
+
+
+
+
+
