@@ -8,8 +8,8 @@ git config --global alias.ci commit
 
 
 ###################################################
-# 查看文件状态 (-s 精简状态显示 , -b 显示当前分支名称)
-git status -s -b
+# 查看文件状态 (ignored 显示被忽略类型的 , -s 精简状态显示 , -b 显示当前分支名称)
+git status --ignored -s -b
 
 git log
 
@@ -19,6 +19,11 @@ git cat-file -p <commit_id>
 # 查看当前的工作分支
 git branch
 
+#忽略只对于为加入版本库的本地文件有效, 已加入版本库则无效
+#添加css文件忽略(git add 时失败.  但是git add -f 还是可以添加)
+$ cat > .gitignore << EOF
+> *.css
+> EOF
 
 ###################################################
 # 修改比较(工作区与暂存区stage)
@@ -34,15 +39,18 @@ git diff --cached 或者 --staged
 ###################################################
 # 添加文件版本控制
 git add hello.txt
-# 交互式操作文件界面, 
+
+# 交互式操作文件界面
 git add -i 
+
+# 文件移动(默认移动到.ha文件夹,  如果不存在则改名为.ha)
+git mv .welcome.txt .ha
 
 # 文件改名
 git mv welcome.txt README.MD
 
-# 文件删除
-git rm welcome.txt
-
+# 文件删除(移除出stash并删除)
+git rm -f welcome.txt
 
 
 
@@ -99,7 +107,15 @@ git stash clear
 
 
 ###################################################
+# 文件归档 (对于未忽略目录树建立归档)
+git archive -o test.zip HEAD
 
+# 文件归档 (对于指定文件夹建立归档)
+git archive -o test.rar HEAD src doc
+
+
+#查看包含的引用
+git show-ref
 
 
 
