@@ -16,14 +16,16 @@ git log
 # 查看最近提交情况
 git cat-file -p <commit_id>
 
-# 查看当前的工作分支
-git branch
 
 #忽略只对于为加入版本库的本地文件有效, 已加入版本库则无效
 #添加css文件忽略(git add 时失败.  但是git add -f 还是可以添加)
 $ cat > .gitignore << EOF
 > *.css
 > EOF
+
+#修改取消对trunk文件忽略追踪(本地修改不加入提交)
+git update-index --assume-unchanged
+git update-index --no-assume-unchanged #继续追踪
 
 ###################################################
 # 修改比较(工作区与暂存区stage)
@@ -118,18 +120,46 @@ git archive -o test.rar HEAD src doc
 git show-ref
 
 
+#git将本地仓库上传到远程仓库
+1. git init
+2. git add .
+3. git commit -am "###"      -------以上3步只是本地提交
+4.git remote add origin git@xx.xx.xx.xx:repos/xxx/xxx/xxx.git
+5.git push origin 本地分支:远程分支
+
+###################################################
+1.git branch							# 显示分支列表
+2.git branch <branchname> 				# 创建分支(基于当前头指针)
+3.git branch <branchname> <start-point>	# 创建分支(基于提交)
+4.git branch -d <branchname> 			# 删除分支(检查是否已经合并到其他分支中)
+5.git branch -D <branchname> 			# 删除分支(不检查)
+6.git branch -m <oldbranch> <newbranch> # 重命名分支(检查是否已经存在相同名称)
+6.git branch -M <oldbranch> <newbranch> # 重命名分支(不检查)
+
+#创建分支并提交到远程
+git branch develop
+git push -u origin develop
+# 创建功能开发分支
+git checkout -b some-feature develop
+
+# 切换工作分支
+git checkout <branchname>
+
+# 创建并切换工作分支
+git checkout -b <new-branchname> [<start_point>]
+
+###################################################解决冲突 
+#自动合并,解决冲突
+git fetch 
+git merge refs/remotes/origin/<branchname>
+# 文件内容冲突,则需手动比较修改
+git add <conflictfile> #冲突文件添加
+git commit -m "解决冲突日志.."
+git push origin <branchname>
 
 
-
-
-
-
-
-
-
-
-
-
+	# 如果失败,则手动执行
+	git pull --no-commit origin develop
 
 
 
