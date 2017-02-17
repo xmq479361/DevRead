@@ -1,0 +1,12 @@
+apply plugin: 'java'
+
+dependencies {
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+    compile files('libs/android-database-sqlcipher.jar')
+    compile files('libs/ormlite-android-4.46.jar')
+    compile files('libs/ormlite-core-4.46.jar')
+    compile files('libs/zteandroid-common.jar')
+}
+
+sourceCompatibility = "1.7"
+targetCompatibility = "1.7"
