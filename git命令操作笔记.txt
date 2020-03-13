@@ -6,12 +6,22 @@ git init demo
 # 设置常量 (alias:命令关键字别名)
 git config --global alias.ci commit 
 
+生成密钥
+ssh-keygen -t rsa -C "humingx@yeah.net"
+
+eval "$(ssh-agent -s)"
+++++++  Agent pid 59566
+ssh-add ~/.ssh/id_rsa
+
+ssh-agent
+
 
 ###################################################
 # 查看文件状态 (ignored 显示被忽略类型的 , -s 精简状态显示 , -b 显示当前分支名称)
 git status --ignored -s -b
 
 git log
+
 
 # 查看最近提交情况
 git cat-file -p <commit_id>
@@ -74,13 +84,16 @@ git checkout
 # 根据路径检出
 git checkout -q
 
-
+git checkout [-m] [ [-b | -- orphan ] <new_branch>]  [start_point] 
 ###################################################
 # 将本地修改提交到本地仓库中 (跳过stag 暂存区)
 git commit -m "提交日志"
 
 # 将本地修改提交到本地仓库中 (跳过stag 暂存区) 对本地所有变更的文件提交,包括(修改,删除)但不包括未被版本追踪的文件
 git commit -a -m "提交日志"
+
+#修改已提交的注释内容
+git commit --amend
 
 
 ###################################################
@@ -90,7 +103,7 @@ git reset --hard <commit_id>
 # 软回滚 ::回滚本地仓库修改(commitId:回滚到的版本SHA1值), 不会回滚工作区,只回滚暂存区,保留已进行的修改.
 git reset --soft <commitId> 
 
-
+许孟秋
 ###################################################
 # 保存当前工作进度(将工作区和暂存区的改动封存), 并将工作区修改删除
 git stash
@@ -157,11 +170,12 @@ git add <conflictfile> #冲突文件添加
 git commit -m "解决冲突日志.."
 git push origin <branchname>
 
+####在 git merge 的时候，加上 --no-ff 参数，是为了让它生成一个新的 commit，这样就可以提交了~（不过生成的 gerrit change 是看不到改动信息的）
 
 	# 如果失败,则手动执行
 	git pull --no-commit origin develop
 
-
+E:\devGitPath/trunk/Src/ZM_CJ430_AndroidMailClient/config.gradle
 ###################################################删除远程分支和tag
 
 在Git v1.7.0 之后，可以使用这种语法删除远程分支：
@@ -179,6 +193,6 @@ git push origin :<branchName>
 git tag -d <tagname>
 git push origin :refs/tags/<tagname>
 两种语法作用完全相同。
-
+git push origin:HEAD:refs/for/master%r=xu.mengqiu@zte.com.cn
 
 
